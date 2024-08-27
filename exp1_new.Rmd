@@ -1,0 +1,285 @@
+---
+title: "exp1_v9v10"
+author: "Ruoyu Zhang"
+date: "2024-08-08"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# load libraries
+
+```{r}
+library(tidyverse)
+library(Hmisc)
+library(performance)
+library(dplyr)
+library(readr)
+library(afex)
+library(stringr)
+library(emmeans)
+```
+
+# load data from v9
+
+```{r}
+df1_v9 <- list.files(path = "/Users/ruoyuzhang/Downloads/Master's Project/data/exp1_v9", full.names = TRUE) %>% 
+  lapply(read_csv) %>%
+  bind_rows()
+
+demo1_v9 <- read_csv("/Users/ruoyuzhang/Downloads/Master's Project/data/exp1_cf/exp1_cf_v9.csv")
+```
+
+# demographic data from v9
+## 272 participants in total
+
+```{r}
+tidied_demo1_v9 <- demo1_v9 %>%
+  select('Question Key', 'Response') %>%
+  filter(`Question Key` %in% c("birth.date-year", "sex"))
+
+# gender counts
+gender_counts1_v9 <- demo1_v9 %>%
+  filter(`Question Key` == "sex") %>%
+  group_by(Response) %>%
+  summarise(count = n())
+
+print(gender_counts1_v9)
+
+# age counts
+age_groups1_v9 <- demo1_v9 %>%
+  filter(`Question Key` == "birth.date-year") %>%
+  mutate(age = as.numeric(Response)) %>%
+  mutate(age_group = cut(age, breaks = seq(0, 100, by = 20), right = FALSE, labels = c("0-19", "20-39", "40-59", "60-79", "80-99"))) %>%
+  group_by(age_group) %>%
+  summarise(count = n())
+
+print(age_groups1_v9)
+```
+
+# data wrangling for exp1 v9
+
+```{r}
+tidied_df1_v9 <- df1_v9 %>%
+  select("Task Name", "Spreadsheet", "Response") %>%
+  filter(!is.na(Response), !Response == "BEGIN", !Response == "END", !Response == "audio started") %>%
+  separate("Task Name", into = c("fixation", "modality")) %>%
+  separate("Spreadsheet", into = c("duration", "unit"), sep = 3) %>%
+  select(-fixation, -unit) %>%
+  rename(response = Response) %>%
+  transform(duration = as.numeric(duration), response = as.numeric(response))
+
+count1_v9 <- tidied_df1_v9 %>%
+  group_by(modality, duration) %>%
+  summarise(count = n())
+
+head(tidied_df1_v9)
+print(count1_v9)
+```
+
+# summary stats for v9
+
+```{r}
+summary_stats1_v9 <- tidied_df1_v9 %>%
+  group_by(modality, duration) %>%
+  summarise(across(response, list(
+    mean = ~mean(.),
+    sd = ~sd(.),
+    lower_ci = ~t.test(.)$conf.int[1],
+    upper_ci = ~t.test(.)$conf.int[2]
+  ), .names = "{col}_{fn}"))
+
+print(summary_stats1_v9)
+```
+
+# filter outliers_2.5SD
+
+```{r}
+# Merge the summary statistics back to the original dataframe
+tidied_df1_v9_full <- tidied_df1_v9 %>%
+  left_join(summary_stats1_v9, by = c("modality", "duration"))
+
+# Filter out data points lying outside of 2.50 SD
+filtered_df1_v9 <- tidied_df1_v9_full %>%
+  filter(response >= (response_mean - 2.50 * response_sd) & response <= (response_mean + 2.50 * response_sd))
+
+# Count the number of data points in each condition after filtering
+count1_filtered_v9 <- filtered_df1_v9 %>%
+  group_by(modality, duration) %>%
+  summarise(count = n())
+
+# Print the results
+head(filtered_df1_v9)
+print(count1_filtered_v9)
+
+# some conditions are not meet the minimal amount of participants for a valid result (i.e. at least 26 participants per condition). Therefore, more data collected for specific conditions.
+```
+
+# import new data
+
+```{r}
+# import
+df1_v10 <- list.files(path = "/Users/ruoyuzhang/Downloads/Master's Project/data/exp1_v10", full.names = TRUE) %>% 
+  lapply(read_csv) %>%
+  bind_rows()
+
+demo1_v10 <- read_csv("/Users/ruoyuzhang/Downloads/Master's Project/data/exp1_cf/exp1_cf_v10.csv")
+```
+
+# demographic data from v10
+## 19 more participants (7  for 438ms audio, 12  for 752ms audio)
+
+```{r}
+tidied_demo1_v10 <- demo1_v10 %>%
+  select('Question Key', 'Response') %>%
+  filter(`Question Key` %in% c("birth.date-year", "sex"))
+
+# gender counts
+gender_counts1_v10 <- demo1_v10 %>%
+  filter(`Question Key` == "sex") %>%
+  group_by(Response) %>%
+  summarise(count = n())
+
+print(gender_counts1_v10)
+
+# age counts
+age_groups1_v10 <- demo1_v10 %>%
+  filter(`Question Key` == "birth.date-year") %>%
+  mutate(age = as.numeric(Response)) %>%
+  mutate(age_group = cut(age, breaks = seq(0, 100, by = 20), right = FALSE, labels = c("0-19", "20-39", "40-59", "60-79", "80-99"))) %>%
+  group_by(age_group) %>%
+  summarise(count = n())
+
+print(age_groups1_v10)
+```
+
+# data wrangling for exp1 v10
+
+```{r}
+tidied_df1_v10 <- df1_v10 %>%
+  select("Task Name", "Spreadsheet", "Response") %>%
+  filter(!is.na(Response), !Response == "BEGIN", !Response == "END", !Response == "audio started") %>%
+  separate("Task Name", into = c("fixation", "modality")) %>%
+  separate("Spreadsheet", into = c("duration", "unit"), sep = 3) %>%
+  select(-fixation, -unit) %>%
+  rename(response = Response) %>%
+  transform(duration = as.numeric(duration), response = as.numeric(response))
+
+count1_v10 <- tidied_df1_v10 %>%
+  group_by(modality, duration) %>%
+  summarise(count = n())
+
+head(tidied_df1_v10)
+print(count1_v10)
+```
+
+# summary stats for exp1 v10
+
+```{r}
+summary_stats1_v10 <- tidied_df1_v10 %>%
+  group_by(modality, duration) %>%
+  summarise(across(response, list(
+    mean = ~mean(.),
+    sd = ~sd(.),
+    lower_ci = ~t.test(.)$conf.int[1],
+    upper_ci = ~t.test(.)$conf.int[2]
+  ), .names = "{col}_{fn}"))
+
+print(summary_stats1_v10)
+```
+
+# merge v10 into the original data frame
+
+```{r}
+# first make sure all columns are the same
+tidied_df1_v10_full <- tidied_df1_v10 %>%
+  left_join(summary_stats1_v10, by = c("modality", "duration"))
+
+# bind rows
+df1_new <- bind_rows(tidied_df1_v9_full, tidied_df1_v10_full)
+```
+
+# calculate the new summary stats
+
+```{r}
+summary_stats1_new <- df1_new %>%
+  group_by(modality, duration) %>%
+  summarise(across(response, list(
+    mean = ~mean(.),
+    sd = ~sd(.),
+    lower_ci = ~t.test(.)$conf.int[1],
+    upper_ci = ~t.test(.)$conf.int[2]
+  ), .names = "{col}_{fn}"))
+
+count1_new <- df1_new %>%
+  group_by(modality, duration) %>%
+  summarise(count = n())
+
+print(summary_stats1_new)
+print(count1_new)
+```
+
+# plot for summary stats
+
+```{r}
+ggplot(summary_stats1_new, aes(x = duration, y = response_mean, color = modality, group = modality)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mean Response by Modality and Duration",
+       x = "Duration",
+       y = "Mean Response") +
+  theme_minimal()
+
+
+df1_new %>%
+  ggplot(aes(x = duration, y = response, color = modality)) +
+  geom_point() +
+  geom_jitter() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(text = element_text(size = 13)) +
+  labs(x = "durations",
+       y = "response")
+```
+
+# inferential statistics
+
+```{r}
+# fit a model
+m.interaction1 <- lm(response ~ modality*duration, data = df1_new)
+anova(m.interaction1)
+
+# Assumption check
+# Residual diagnostic plots
+par(mfrow = c(2, 2))
+plot(m.interaction1)
+# Shapiro-Wilk test for normality
+shapiro.test(residuals(m.interaction1))
+
+# Display the model coefficients
+summary(m.interaction1)$coefficients
+
+# Obtain slopes
+m.lst1 <- lstrends(m.interaction1, "modality", var = "duration")
+m.lst1
+# Compare slopes
+pairs(m.lst1)
+
+
+# Obtain intercepts
+emm1 <- emmeans(m.interaction1, ~ modality)
+emm1
+# Perform pairwise comparisons of the intercepts
+pairs(emm1)
+```
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,183 @@
+---
+title: "long duration_data analysis"
+author: "Ruoyu Zhang"
+date: "2024-07-30"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# 1. import libraries
+
+```{r}
+library(tidyverse)
+library(Hmisc)
+library(performance)
+library(dplyr)
+library(readr)
+library(afex)
+library(stringr)
+library(emmeans)
+```
+
+# 2. import data
+
+```{r}
+df2 <- list.files(path = "/Users/ruoyuzhang/Downloads/Master's Project/data/exp2", full.names = TRUE) %>% 
+  lapply(read_csv) %>%
+  bind_rows()
+
+demo2 <- read_csv("exp2_cf.csv")
+```
+# 3. demographic data for exp2
+
+```{r}
+tidied_demo2 <- demo2 %>%
+  select('Question Key', 'Response') %>%
+  filter(`Question Key` %in% c("birth.date-year", "sex"))
+
+# gender counts
+gender_counts2 <- demo2 %>%
+  filter(`Question Key` == "sex") %>%
+  group_by(Response) %>%
+  summarise(count = n())
+
+print(gender_counts2)
+
+# age counts
+age_groups2 <- demo2 %>%
+  filter(`Question Key` == "birth.date-year") %>%
+  mutate(age = as.numeric(Response)) %>%
+  mutate(age_group = cut(age, breaks = seq(0, 100, by = 20), right = FALSE, labels = c("0-19", "20-39", "40-59", "60-79", "80-99"))) %>%
+  group_by(age_group) %>%
+  summarise(count = n())
+
+print(age_groups2)
+```
+
+# 4. Tidy the raw data
+
+```{r}
+tidied_df2 <- df2 %>%
+  select("Task Name", "Spreadsheet", "Response") %>%
+  filter(!is.na(Response), !Response == "BEGIN", !Response == "END", !Response == "audio started") %>%
+  separate("Task Name", into = c("fixation", "modality")) %>%
+  mutate(duration = as.numeric(str_extract(Spreadsheet, "\\d+")),
+         unit = str_extract(Spreadsheet, "[a-zA-Z]+")) %>%
+  select(-fixation, -unit, -Spreadsheet) %>%
+  rename(response = Response) %>%
+  mutate(modality = factor(modality), duration = as.numeric(duration), response = as.numeric(response))
+
+count2 <- tidied_df2 %>%
+  group_by(modality, duration) %>%
+  summarise(count = n())
+
+head(tidied_df2)
+print(count2)
+```
+
+# 5. Summary statistics_original
+
+```{r}
+summary_stats2 <- tidied_df2 %>%
+  group_by(modality, duration) %>%
+  summarise(across(response, list(
+    mean = ~mean(.),
+    sd = ~sd(.),
+    lower_ci = ~t.test(.)$conf.int[1],
+    upper_ci = ~t.test(.)$conf.int[2]
+  ), .names = "{col}_{fn}"))
+
+print(summary_stats2)
+```
+# 6. filtered data_remove value that outside 2.5sd
+
+```{r}
+# Merge the summary statistics back to the original dataframe
+tidied_df2_full <- tidied_df2 %>%
+  left_join(summary_stats2, by = c("modality", "duration"))
+
+# Filter out data points lying outside of 2.5 SD
+filtered_df2 <- tidied_df2_full %>%
+  filter(response >= (response_mean - 2.50 * response_sd) & response <= (response_mean + 2.50 * response_sd))
+
+# Count the number of data points in each condition after filtering
+count2_filtered <- filtered_df2 %>%
+  group_by(modality, duration) %>%
+  summarise(count = n())
+
+# Re-calculate the summary statistics for the filtered data
+summary_stats2_filtered <- filtered_df2 %>%
+  group_by(modality, duration) %>%
+  summarise(across(response, list(
+    mean = ~mean(.),
+    sd = ~sd(.),
+    lower_ci = ~t.test(.)$conf.int[1],
+    upper_ci = ~t.test(.)$conf.int[2]
+  ), .names = "{col}_{fn}"))
+
+# Print the results
+head(filtered_df2)
+print(summary_stats2)
+print(count2_filtered)
+print(summary_stats2_filtered)
+```
+
+
+
+# 7. plot for summary stats
+
+```{r}
+ggplot(summary_stats2_filtered, aes(x = duration, y = response_mean, color = modality, group = modality)) +
+  geom_line() +
+  geom_point() +
+  labs(title = "Mean Response by Modality and Duration",
+       x = "Duration",
+       y = "Mean Response") +
+  theme_minimal()
+
+
+filtered_df2 %>%
+  ggplot(aes(x = duration, y = response, color = modality)) +
+  geom_point() +
+  geom_jitter() +
+  geom_smooth(method = "lm", se = FALSE) +
+  theme_minimal() +
+  theme(text = element_text(size = 13)) +
+  labs(x = "durations",
+       y = "response")
+```
+
+# 8. inferential statistics
+
+```{r}
+# fit a model
+m.interaction2 <- lm(response ~ modality*duration, data = filtered_df2)
+anova(m.interaction2)
+
+# Assumption check
+# Residual diagnostic plots
+par(mfrow = c(2, 2))
+plot(m.interaction2)
+# Shapiro-Wilk test for normality
+shapiro.test(residuals(m.interaction2))
+
+# Display the model coefficients
+summary(m.interaction2)$coefficients
+
+# Obtain slopes
+m.lst2 <- lstrends(m.interaction2, "modality", var = "duration")
+
+# Compare slopes
+pairs(m.lst2)
+
+
+# Obtain intercepts
+emm2 <- emmeans(m.interaction2, ~ modality)
+
+# Perform pairwise comparisons of the intercepts
+pairs(emm2)
+```
+
