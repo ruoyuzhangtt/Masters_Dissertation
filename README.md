@@ -1,12 +1,9 @@
 # Masters_Dissertation
 
-The current project is a student dissertation submitted to the University of Manchester as part of the Master's programme requirment. The topic of the project is time perception, specificaly retrospective time duration judgement. See full abstract below.
+The current project is a student dissertation submitted to the University of Manchester as part of the Master's programme requirement. This repository contains the raw data and full analysis codes for the dissertation.
 
 **Abstract**
 
+Time duration judgements are typically categorised into prospective, and retrospective time judgements. Solid evidence supports the internal clock model as a mainstream mechanism for prospective timing. The Storage Size Model proposed that retrospective timing judgement is instead based on the amount of information processed, but inconsistent experiment results have questioned the validity or purity of this underlying mechanism. A possible explanation of this inconsistency is that both types of time judgement are based on the internal clock, but they differ in the amount of attention allocated to timing the event. In the current study, we conducted two experiments with different stimuli durations in both the visual and auditory modalities to test the potential modality effect in a retrospective timing condition. The ‘verbal estimation of duration’ task was used. The two experiments differed only in the range of durations used. Experiment 1 used a range from 281 – 909 ms, and Experiment 2 used a range of 595-3107 ms. Results of both experiments revealed a significant longer verbal estimation of duration for auditory stimuli than that for visual stimuli, which suggests a modality effect. The regression analysis found a significant intercept effect between modalities, but no slope effect. The problem of the division of types of time judgement are also discussed in the article. This large scale investigation involved over 600 participants and represents the first investigation of the possibility of a modality effect in retrospective timing.
 
-
-
-*key words:*
-
-This repository contains the raw data and analysis codes for the project.
+*key words:* Time duration judgement; Retrospective timing; Internal clock model; Slope effect
